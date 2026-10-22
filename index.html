@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Jeu Tic-Tac-Toe - DevSecOps Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; padding-top: 50px; }
+    h1 { color: #333; }
+    .board { display: grid; grid-template-columns: repeat(3, 100px); grid-gap: 5px; justify-content: center; margin-top: 20px; }
+    .cell { width: 100px; height: 100px; background-color: #fff; border: 2px solid #333; font-size: 2.5em; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .cell:hover { background-color: #e0e0e0; }
+    #status { margin-top: 20px; font-size: 1.2em; font-weight: bold; }
+    button { margin-top: 15px; padding: 10px 20px; font-size: 1em; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>🎮 Tic-Tac-Toe (DevSecOps Pipeline)</h1>
+  <div id="status">Tour du joueur X</div>
+  <div class="board" id="board">
+    <div class="cell" onclick="makeMove(this, 0)"></div>
+    <div class="cell" onclick="makeMove(this, 1)"></div>
+    <div class="cell" onclick="makeMove(this, 2)"></div>
+    <div class="cell" onclick="makeMove(this, 3)"></div>
+    <div class="cell" onclick="makeMove(this, 4)"></div>
+    <div class="cell" onclick="makeMove(this, 5)"></div>
+    <div class="cell" onclick="makeMove(this, 6)"></div>
+    <div class="cell" onclick="makeMove(this, 7)"></div>
+    <div class="cell" onclick="makeMove(this, 8)"></div>
+  </div>
+  <button onclick="resetGame()">Recommencer</button>
+
+  <script>
+    let currentPlayer = 'X';
+    let board = ['', '', '', '', '', '', '', '', ''];
+    let gameActive = true;
+
+    function makeMove(cell, index) {
+      if (board[index] !== '' || !gameActive) return;
+      board[index] = currentPlayer;
+      cell.innerText = currentPlayer;
+      if (checkWin()) {
+        document.getElementById('status').innerText = `🎉 Joueur ${currentPlayer} a gagné !`;
+        gameActive = false;
+        return;
+      }
+      if (board.every(cell => cell !== '')) {
+        document.getElementById('status').innerText = "Match nul !";
+        gameActive = false;
+        return;
+      }
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      document.getElementById('status').innerText = `Tour du joueur ${currentPlayer}`;
+    }
+
+    function checkWin() {
+      const winPatterns = [
+        [0,1,2], [3,4,5], [6,7,8],
+        [0,3,6], [1,4,7], [2,5,8],
+        [0,4,8], [2,4,6]
+      ];
+      return winPatterns.some(p => board[p[0]] && board[p[0]] === board[p[1]] && board[p[0]] === board[p[2]]);
+    }
+
+    function resetGame() {
+      board = ['', '', '', '', '', '', '', '', ''];
+      gameActive = true;
+      currentPlayer = 'X';
+      document.getElementById('status').innerText = "Tour du joueur X";
+      document.querySelectorAll('.cell').forEach(c => c.innerText = '');
+    }
+  </script>
+</body>
+</html>

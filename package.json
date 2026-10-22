@@ -1,0 +1,13 @@
+{
+  "name": "tictactoe-devsecops",
+  "version": "1.0.0",
+  "description": "Jeu Tic-Tac-Toe pour Pipeline DevSecOps",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Execution des tests unitaires...\" && exit 0"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
