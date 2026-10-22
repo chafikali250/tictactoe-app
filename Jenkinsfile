@@ -24,12 +24,12 @@ pipeline {
 
         stage('Security Scan - Trivy') {
             steps {
-                // Redirection complète de TMPDIR et TRIVY_TMP_DIR vers un dossier local pour éviter /tmp (plein)
+                // Redirection du dossier temporaire et fix des flags Trivy
                 sh '''
                     mkdir -p .trivy-cache/tmp
                     export TMPDIR=$(pwd)/.trivy-cache/tmp
                     export TRIVY_TMP_DIR=$(pwd)/.trivy-cache/tmp
-                    trivy image --skip-db-update-- cache-dir .trivy-cache --severity HIGH,CRITICAL ${IMAGE_NAME}:${BUILD_NUMBER}
+                    trivy image --skip-db-update --cache-dir .trivy-cache --severity HIGH,CRITICAL ${IMAGE_NAME}:${BUILD_NUMBER}
                 '''
             }
         }
