@@ -23,14 +23,16 @@ pipeline {
         }
 
         stage('Security Scan - Trivy') {
-    steps {
-        sh '''
-            export TRIVY_TMP_DIR=/home/ubuntu/.trivy/tmp
-            mkdir -p /home/ubuntu/.trivy/tmp
-            trivy image --cache-dir /home/ubuntu/.trivy --severity HIGH,CRITICAL ${IMAGE_NAME}:${BUILD_NUMBER}
-        '''
-    }
-}
+            steps {
+                // Utilisation d'un cache local au projet pour contourner /tmp (plein) et les permissions de /home/ubuntu
+                sh '''
+                    mkdir -p .trivy-cache/tmp
+                    export TRIVY_TMP_DIR=.trivy-cache/tmp
+                    trivy image --cache-dir .trivy-cache --severity HIGH,CRITICAL ${IMAGE_NAME}:${BUILD_NUMBER}
+                '''
+            }
+        }
+
         stage('Push Docker Image') {
             steps {
                 script {
