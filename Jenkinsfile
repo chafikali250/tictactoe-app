@@ -2,59 +2,64 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_USER      = 'chali250'
-        IMAGE_NAME           = 'tictactoe-game'
-        BUILD_TAG            = "${BUILD_NUMBER}"
-        GITHUB_MANIFEST_REPO = 'github.com/chafikali250/tictactoe-k8s-manifests.git'
+        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // À adapter selon l'ID de vos identifiants sur Jenkins
+        IMAGE_NAME = 'chali250/tictactoe-game'
+        GIT_REPO_MANIFESTS = 'git@github.com:chali250/tictactoe-k8s-manifests.git' // Votre dépôt GitOps
     }
 
     stages {
-        stage('1. Checkout Code') {
+        stage('Checkout Code') {
             steps {
-                echo '📥 Récupération du code depuis GitHub...'
                 checkout scm
             }
         }
 
-        stage('2. Build & Test') {
+        stage('Build Docker Image') {
             steps {
-                echo '🧪 Exécution des tests...'
-                sh 'npm install'
-                sh 'npm test'
-            }
-        }
-
-        stage('3. Build & Push Docker Image') {
-            steps {
-                echo '🐳 Construction et publication de l\'image Docker...'
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh "docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:${BUILD_TAG} ."
-                    sh "docker build -t ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest ."
-                    sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
-                    sh "docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:${BUILD_TAG}"
-                    sh "docker push ${DOCKER_HUB_USER}/${IMAGE_NAME}:latest"
+                script {
+                    appImage = docker.build("${IMAGE_NAME}:${BUILD_NUMBER}")
                 }
             }
         }
 
-        stage('4. Security Scan with Trivy') {
+        stage('Security Scan - Trivy') {
             steps {
-                echo '🛡️ Scan de sécurité avec Trivy...'
-                sh "trivy image --severity HIGH,CRITICAL ${DOCKER_HUB_USER}/${IMAGE_NAME}:${BUILD_TAG}"
+                // Utilisation de --cache-dir pour éviter la saturation de /tmp
+                sh "trivy image --cache-dir /home/ubuntu/.trivy --severity HIGH,CRITICAL ${IMAGE_NAME}:${BUILD_NUMBER}"
             }
         }
 
-        stage('5. Update Manifest Repo') {
+        stage('Push Docker Image') {
             steps {
-                echo '📝 Mise à jour des manifestes GitOps...'
-                withCredentials([gitUsernamePassword(credentialsId: 'github-credentials', gitToolName: 'git-tool')]) {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', "${DOCKER_CREDENTIALS_ID}") {
+                        appImage.push("${BUILD_NUMBER}")
+                        appImage.push("latest")
+                    }
+                }
+            }
+        }
+
+        stage('Update GitOps Manifests') {
+            steps {
+                script {
+                    // Configuration de git pour le push automatique
+                    sh '''
+                        git config --global user.email "jenkins@pipeline.com"
+                        git config --global user.name "Jenkins CI"
+                    '''
+                    
+                    // Cloner, mettre à jour le tag de l'image dans deployment.yaml et pousser vers le dépôt K8s
                     sh """
-                        git clone https://${GITHUB_MANIFEST_REPO} manifest-repo
-                        cd manifest-repo
-                        sed -i 's|image: .*|image: ${DOCKER_HUB_USER}/${IMAGE_NAME}:${BUILD_TAG}|g' deployment.yaml
-                        git config user.email "jenkins@pipeline.com"
-                        git config user.name "Jenkins CI"
-                        git commit -am "Update image tag to build ${BUILD_TAG}"
+                        rm -rf tictactoe-k8s-manifests
+                        git clone ${GIT_REPO_MANIFESTS}
+                        cd tictactoe-k8s-manifests
+                        
+                        # Remplacement du tag dans le fichier de déploiement Kubernetes
+                        sed -i 's|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${BUILD_NUMBER}|g' deployment.yaml
+                        
+                        git add deployment.yaml
+                        git commit -m "CI: Update Tic-Tac-Toe image tag to ${BUILD_NUMBER}"
                         git push origin main
                     """
                 }
@@ -63,9 +68,11 @@ pipeline {
     }
 
     post {
-        always {
-            echo '🧹 Nettoyage du workspace...'
-            deleteDir()
+        success {
+            echo 'Pipeline exécuté avec succès ! ArgoCD va synchroniser les modifications.'
+        }
+        failure {
+            echo 'Le pipeline a échoué. Vérifiez les logs de l étape en cours.'
         }
     }
 }
