@@ -24,10 +24,11 @@ pipeline {
 
         stage('Security Scan - Trivy') {
             steps {
-                // Utilisation d'un cache local au projet pour contourner /tmp (plein) et les permissions de /home/ubuntu
+                // Redirection complète de TMPDIR et TRIVY_TMP_DIR vers un dossier local pour éviter /tmp (plein)
                 sh '''
                     mkdir -p .trivy-cache/tmp
-                    export TRIVY_TMP_DIR=.trivy-cache/tmp
+                    export TMPDIR=$(pwd)/.trivy-cache/tmp
+                    export TRIVY_TMP_DIR=$(pwd)/.trivy-cache/tmp
                     trivy image --cache-dir .trivy-cache --severity HIGH,CRITICAL ${IMAGE_NAME}:${BUILD_NUMBER}
                 '''
             }
