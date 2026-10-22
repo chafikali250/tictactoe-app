@@ -23,12 +23,14 @@ pipeline {
         }
 
         stage('Security Scan - Trivy') {
-            steps {
-                // Utilisation de --cache-dir pour éviter la saturation de /tmp
-                sh "trivy image --cache-dir /home/ubuntu/.trivy --severity HIGH,CRITICAL ${IMAGE_NAME}:${BUILD_NUMBER}"
-            }
-        }
-
+    steps {
+        sh '''
+            export TRIVY_TMP_DIR=/home/ubuntu/.trivy/tmp
+            mkdir -p /home/ubuntu/.trivy/tmp
+            trivy image --cache-dir /home/ubuntu/.trivy --severity HIGH,CRITICAL ${IMAGE_NAME}:${BUILD_NUMBER}
+        '''
+    }
+}
         stage('Push Docker Image') {
             steps {
                 script {
