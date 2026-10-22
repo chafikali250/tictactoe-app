@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // À adapter selon l'ID de vos identifiants sur Jenkins
+        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'
         IMAGE_NAME = 'chali250/tictactoe-game'
-        GIT_REPO_MANIFESTS = 'git@github.com:chali250/tictactoe-k8s-manifests.git' // Votre dépôt GitOps
+        GIT_REPO_MANIFESTS = 'git@github.com:chali250/tictactoe-k8s-manifests.git'
     }
 
     stages {
@@ -24,11 +24,11 @@ pipeline {
 
         stage('Security Scan - Trivy') {
             steps {
-                // Redirection du dossier temporaire et fix des flags Trivy
                 sh '''
-                    mkdir -p .trivy-cache/tmp
-                    export TMPDIR=$(pwd)/.trivy-cache/tmp
-                    export TRIVY_TMP_DIR=$(pwd)/.trivy-cache/tmp
+                    GLOBAL_CACHE="/var/lib/jenkins/.cache/trivy"
+                    mkdir -p ${GLOBAL_CACHE}/tmp
+                    export TMPDIR=${GLOBAL_CACHE}/tmp
+                    export TRIVY_TMP_DIR=${GLOBAL_CACHE}/tmp
                     trivy image --cache-dir ${GLOBAL_CACHE} --severity HIGH,CRITICAL ${IMAGE_NAME}:${BUILD_NUMBER}
                 '''
             }
@@ -48,19 +48,16 @@ pipeline {
         stage('Update GitOps Manifests') {
             steps {
                 script {
-                    // Configuration de git pour le push automatique
                     sh '''
                         git config --global user.email "jenkins@pipeline.com"
                         git config --global user.name "Jenkins CI"
                     '''
                     
-                    // Cloner, mettre à jour le tag de l'image dans deployment.yaml et pousser vers le dépôt K8s
                     sh """
                         rm -rf tictactoe-k8s-manifests
                         git clone ${GIT_REPO_MANIFESTS}
                         cd tictactoe-k8s-manifests
                         
-                        # Remplacement du tag dans le fichier de déploiement Kubernetes
                         sed -i 's|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${BUILD_NUMBER}|g' deployment.yaml
                         
                         git add deployment.yaml
@@ -74,7 +71,7 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline exécuté avec succès ! ArgoCD va synchroniser les modifications.'
+            echo 'Pipeline exécuté avec succès ! ArgoCD va synchroniser la nouvelle version.'
         }
         failure {
             echo 'Le pipeline a échoué. Vérifiez les logs de l étape en cours.'
