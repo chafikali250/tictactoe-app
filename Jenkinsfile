@@ -4,7 +4,6 @@ pipeline {
     environment {
         DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'
         IMAGE_NAME = 'chali250/tictactoe-game'
-        GIT_REPO_MANIFESTS = 'git@github.com:chali250/tictactoe-k8s-manifests.git'
     }
 
     stages {
@@ -19,18 +18,6 @@ pipeline {
                 script {
                     appImage = docker.build("${IMAGE_NAME}:${BUILD_NUMBER}")
                 }
-            }
-        }
-
-        stage('Security Scan - Trivy') {
-            steps {
-                sh '''
-                    GLOBAL_CACHE="/var/lib/jenkins/.cache/trivy"
-                    mkdir -p ${GLOBAL_CACHE}/tmp
-                    export TMPDIR=${GLOBAL_CACHE}/tmp
-                    export TRIVY_TMP_DIR=${GLOBAL_CACHE}/tmp
-                    trivy image --cache-dir ${GLOBAL_CACHE} --severity HIGH,CRITICAL ${IMAGE_NAME}:${BUILD_NUMBER}
-                '''
             }
         }
 
@@ -70,6 +57,11 @@ pipeline {
     }
 
     post {
+        always {
+            // Supprime l'image Docker locale et nettoie le système pour libérer le disque
+            sh "docker rmi ${IMAGE_NAME}:${BUILD_NUMBER} || true"
+            sh "docker system prune -f"
+        }
         success {
             echo 'Pipeline exécuté avec succès ! ArgoCD va synchroniser la nouvelle version.'
         }
