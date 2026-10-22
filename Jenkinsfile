@@ -29,7 +29,7 @@ pipeline {
                     mkdir -p .trivy-cache/tmp
                     export TMPDIR=$(pwd)/.trivy-cache/tmp
                     export TRIVY_TMP_DIR=$(pwd)/.trivy-cache/tmp
-                    trivy image --skip-db-update --cache-dir .trivy-cache --severity HIGH,CRITICAL ${IMAGE_NAME}:${BUILD_NUMBER}
+                    trivy image --cache-dir .trivy-cache --severity HIGH,CRITICAL ${IMAGE_NAME}:${BUILD_NUMBER}
                 '''
             }
         }
